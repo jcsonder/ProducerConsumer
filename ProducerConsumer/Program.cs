@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -23,26 +24,36 @@ namespace ProducerConsumer
 
         private class Mediator
         {
-            BlockingCollection<int> events = new BlockingCollection<int>();
-            Task runningCalculation;
+            private readonly Random _rnd;
+            private readonly BlockingCollection<int> _events;
+            private Task _runningCalculation;
+
+            public Mediator()
+            {
+                _rnd = new Random();
+                _events = new BlockingCollection<int>();
+            }
 
             public void Handle(int @event)
             {
-                System.Console.WriteLine(System.DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff"));
+                Console.WriteLine(DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff"));
 
-                events.Add(@event);
+                _events.Add(@event);
 
-                if (runningCalculation == null || runningCalculation.IsCompleted)
+                if (_runningCalculation == null || _runningCalculation.IsCompleted)
                 {
-                    runningCalculation = Task.Run(() => SlowBatchProcessing(events));
+                    _runningCalculation = Task.Run(() => SlowBatchProcessing(_events));
                 }
             }
 
             private Task SlowBatchProcessing(BlockingCollection<int> events)
             {
-                System.Threading.Thread.Sleep(1000);
+                int timeout = _rnd.Next(200, 1000);
+                System.Threading.Thread.Sleep(timeout);
+                
                 System.Console.WriteLine($"event calculation: {string.Join(", ", @events)}");
 
+                // remove all items from blocking collection
                 while (events.Count > 0)
                 {
                     events.TryTake(out _);
