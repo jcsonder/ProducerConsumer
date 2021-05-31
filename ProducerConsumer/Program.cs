@@ -15,7 +15,7 @@ namespace ProducerConsumer
             Mediator mediator = new Mediator();
             var producerTask = Task.Run(() => {
 
-                for (int i = 1; i <= 1000; i++)
+                for (int i = 1; i <= 100; i++)
                 {
                     // every 100 ms we have to handle an event
                     Thread.Sleep(100);
@@ -45,7 +45,7 @@ namespace ProducerConsumer
 
             await producerTask;
 
-            mediator.CalculatedData.ForEach(x => Console.WriteLine($"{x.Item1}_{x.Item2}"));
+            mediator.CalculatedData.ForEach(x => Console.WriteLine(x));
 
             Console.WriteLine("End of Main - Press any key to finish");
             Console.ReadLine();
@@ -55,18 +55,18 @@ namespace ProducerConsumer
         {
             private readonly Random _rnd;
             private readonly BlockingCollection<int> _events;
-            
+
             private Task _runningCalculation;
-            private List<Tuple<int, double>> _calculatedData;
+            private List<Result> _calculatedData;
 
             public Mediator()
             {
                 _rnd = new Random();
                 _events = new BlockingCollection<int>();
-                CalculatedData = new List<Tuple<int, double>>();
+                CalculatedData = new List<Result>();
             }
 
-            public List<Tuple<int, double>> CalculatedData { get => _calculatedData; private set => _calculatedData = value; }
+            public List<Result> CalculatedData { get => _calculatedData; private set => _calculatedData = value; }
 
             public void Handle(int @event)
             {
@@ -82,8 +82,6 @@ namespace ProducerConsumer
 
             private Task SlowBatchProcessingAsync(BlockingCollection<int> events)
             {
-                //Console.WriteLine($"SlowBatchProcessing: {string.Join(",", events.ToArray())}");
-
                 // processing takes at least 200ms: Producer creates the events faster then we can process them!
                 int waitTimeInMs = _rnd.Next(200, 1000);
                 try
@@ -109,10 +107,27 @@ namespace ProducerConsumer
                     }
                     
                     Console.WriteLine($"                   : {@event}");
-                    CalculatedData.Add(new Tuple<int, double>(@event, @event + 0.1));
+                    CalculatedData.Add(new Result(@event, @event + 0.1));
                 }
 
                 return Task.CompletedTask;
+            }
+
+            public class Result
+            {
+                public Result(int raw, double calculted)
+                {
+                    RawValue = raw;
+                    CalcultedValue = calculted;
+                }
+
+                public int RawValue { get; }
+                public double CalcultedValue { get; }
+
+                public override string ToString()
+                {
+                    return $"Raw={RawValue}, CalculatedValeu={CalcultedValue}";
+                }
             }
         }
     }
