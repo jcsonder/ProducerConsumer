@@ -11,6 +11,7 @@
         private readonly Random _rnd;
         private readonly ConcurrentQueue<int> _unprocessedEvents;
         private readonly CancellationTokenSource _cancellationTokenSource;
+        private Task _processingTask;
 
         public EventProcessor()
         {
@@ -39,21 +40,18 @@
             _unprocessedEvents.Enqueue(@event);
 
             // fire & forget
-            Task.Run(SlowBatchProcessingAsync, _cancellationTokenSource.Token);
+            if (_processingTask == null || _processingTask.IsCompleted)
+            {
+                _processingTask = Task.Run(SlowBatchProcessing, _cancellationTokenSource.Token);
+            }
         }
 
-        private Task SlowBatchProcessingAsync()
+        private void SlowBatchProcessing()
         {
-            // processing takes at least 200ms: Producer creates the events faster then we can process them!
-            int waitTimeInMs = _rnd.Next(200, 1000);
-            try
-            {
-                Task.Delay(waitTimeInMs, _cancellationTokenSource.Token).Wait(_cancellationTokenSource.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                return Task.FromCanceled(_cancellationTokenSource.Token);
-            }
+            Console.WriteLine($"SlowBatchProcessing BatchSize=:{_unprocessedEvents.Count}");
+
+            // simulation: processing takes longer and longer when there is more and more data
+            Thread.Sleep(CalculatedData.Count * 10);
 
             while (_unprocessedEvents.Count > 0)
             {
@@ -63,8 +61,6 @@
                     CalculatedData.Add(new Result(@event, @event + 0.1));
                 }
             }
-
-            return Task.CompletedTask;
         }
     }
 }
