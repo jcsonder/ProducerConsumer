@@ -86,6 +86,8 @@ namespace ProducerConsumer
                 {
                     Console.WriteLine($"No running Task exists");
                 }
+
+                // TODO: Do we have access to all events that we received? Or jsut to the ones we have a result calculted for?
             }
 
             public void Handle(int @event)
