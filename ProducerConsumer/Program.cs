@@ -50,7 +50,7 @@ namespace ProducerConsumer
 
             Console.WriteLine($"mediator.CalculatedData.Count={mediator.CalculatedData.Count}");
             mediator.CalculatedData.ForEach(x => Console.WriteLine(x));
-            
+
             Console.WriteLine("End of Main - Press any key to finish");
             Console.ReadLine();
         }
@@ -60,7 +60,7 @@ namespace ProducerConsumer
             private readonly Random _rnd;
             private readonly BlockingCollection<int> _events;
             private Task _runningCalculation;
-            
+
             // TODO: Order is not guaranteed!
             private List<Result> _calculatedData;
 
@@ -111,7 +111,7 @@ namespace ProducerConsumer
                 {
                     return Task.FromCanceled(cancellationTokenSource.Token);
                 }
-                
+
                 while (events.Count > 0)
                 {
                     int @event;
@@ -124,7 +124,7 @@ namespace ProducerConsumer
                         Console.WriteLine("Take operation was canceled. IsCancellationRequested={0}", cancellationTokenSource.IsCancellationRequested);
                         return Task.FromCanceled(cancellationTokenSource.Token);
                     }
-                    
+
                     if (cancellationTokenSource.IsCancellationRequested)
                     {
                         break;
