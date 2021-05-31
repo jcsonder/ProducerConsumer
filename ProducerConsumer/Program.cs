@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -45,8 +46,11 @@ namespace ProducerConsumer
 
             await producerTask;
 
-            mediator.CalculatedData.ForEach(x => Console.WriteLine(x));
+            mediator.Stop();
 
+            Console.WriteLine($"mediator.CalculatedData.Count={mediator.CalculatedData.Count}");
+            mediator.CalculatedData.ForEach(x => Console.WriteLine(x));
+            
             Console.WriteLine("End of Main - Press any key to finish");
             Console.ReadLine();
         }
@@ -55,29 +59,42 @@ namespace ProducerConsumer
         {
             private readonly Random _rnd;
             private readonly BlockingCollection<int> _events;
-
             private Task _runningCalculation;
+            
+            // TODO: Order is not guaranteed!
             private List<Result> _calculatedData;
 
             public Mediator()
             {
                 _rnd = new Random();
-                _events = new BlockingCollection<int>();
+                _events = new BlockingCollection<int>(new ConcurrentQueue<int>());
                 CalculatedData = new List<Result>();
             }
 
             public List<Result> CalculatedData { get => _calculatedData; private set => _calculatedData = value; }
 
+            public void Stop()
+            {
+                //_events.CompleteAdding();
+                cancellationTokenSource.Cancel();
+
+                if (_runningCalculation != null && !_runningCalculation.IsCompleted)
+                {
+                    Console.WriteLine($"Running Task exists");
+                }
+                else
+                {
+                    Console.WriteLine($"No running Task exists");
+                }
+            }
+
             public void Handle(int @event)
             {
-                Console.WriteLine($"incoming event: {@event}: {DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff")}");
+                Console.WriteLine($"Mediator handle: {@event}: {DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff")}");
 
                 _events.Add(@event);
 
-                if (_runningCalculation == null || _runningCalculation.IsCompleted)
-                {
-                    _runningCalculation = Task.Run(() => SlowBatchProcessingAsync(_events));
-                }
+                _runningCalculation = Task.Run(() => SlowBatchProcessingAsync(_events));
             }
 
             private Task SlowBatchProcessingAsync(BlockingCollection<int> events)
@@ -106,6 +123,12 @@ namespace ProducerConsumer
                         return Task.FromCanceled(cancellationTokenSource.Token);
                     }
                     
+                    if (cancellationTokenSource.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    // TODO: Order is not correct (anymore?): But that's a mus!
                     Console.WriteLine($"                   : {@event}");
                     CalculatedData.Add(new Result(@event, @event + 0.1));
                 }
