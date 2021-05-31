@@ -50,7 +50,7 @@ namespace ProducerConsumer
             Console.WriteLine($"mediator.CalculatedData.Count={mediator.CalculatedData.Count}");
             mediator.CalculatedData.ForEach(Console.WriteLine);
 
-            Console.WriteLine($"Received but not processed event count={mediator.UnprocessedEvents.Count}, Items:{string.Join(", ", mediator.UnprocessedEvents)}");
+            Console.WriteLine($"mediator.UnprocessedEvents.Count={mediator.UnprocessedEvents.Count}, Items:{string.Join(", ", mediator.UnprocessedEvents)}");
 
             Console.WriteLine("End of Main - Press any key to finish");
             Console.ReadLine();
@@ -93,10 +93,10 @@ namespace ProducerConsumer
 
                 _unprocessedEvents.Enqueue(@event);
 
-                _runningCalculation = Task.Run(() => SlowBatchProcessingAsync(_unprocessedEvents));
+                _runningCalculation = Task.Run(SlowBatchProcessingAsync);
             }
 
-            private Task SlowBatchProcessingAsync(ConcurrentQueue<int> events)
+            private Task SlowBatchProcessingAsync()
             {
                 // processing takes at least 200ms: Producer creates the events faster then we can process them!
                 int waitTimeInMs = _rnd.Next(200, 1000);
@@ -109,9 +109,9 @@ namespace ProducerConsumer
                     return Task.FromCanceled(CancellationTokenSource.Token);
                 }
 
-                while (events.Count > 0)
+                while (_unprocessedEvents.Count > 0)
                 {
-                    if (events.TryDequeue(out var @event))
+                    if (_unprocessedEvents.TryDequeue(out var @event))
                     {
                         Console.WriteLine($"                   : {@event}");
                         CalculatedData.Add(new Result(@event, @event + 0.1));
