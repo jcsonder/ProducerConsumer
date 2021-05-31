@@ -8,17 +8,19 @@ namespace ProducerConsumer
 {
     class Program
     {
+        const int TotalEventCount = 111;
+        const int MillisecondsEventTimeout = 100; // every 100 ms we have to handle an event
+
         static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
 
         static async Task Main()
         {
             Mediator mediator = new Mediator();
-            var producerTask = Task.Run(() => {
-
-                for (int i = 1; i <= 100; i++)
+            var producerTask = Task.Run(() =>
+            {
+                for (int i = 1; i <= TotalEventCount; i++)
                 {
-                    // every 100 ms we have to handle an event
-                    Thread.Sleep(100);
+                    Thread.Sleep(MillisecondsEventTimeout);
                     mediator.Handle(i);
 
                     bool breakLoop = false;
@@ -48,7 +50,7 @@ namespace ProducerConsumer
             Console.WriteLine($"mediator.CalculatedData.Count={mediator.CalculatedData.Count}");
             mediator.CalculatedData.ForEach(Console.WriteLine);
 
-            Console.WriteLine($"mediator: Not processed event count={mediator.Events.Count}, Items:{string.Join(", ", mediator.Events)}");
+            Console.WriteLine($"Received but not processed event count={mediator.UnprocessedEvents.Count}, Items:{string.Join(", ", mediator.UnprocessedEvents)}");
 
             Console.WriteLine("End of Main - Press any key to finish");
             Console.ReadLine();
@@ -57,19 +59,19 @@ namespace ProducerConsumer
         private class Mediator
         {
             private readonly Random _rnd;
-            private readonly ConcurrentQueue<int> _events;
+            private readonly ConcurrentQueue<int> _unprocessedEvents;
             private Task _runningCalculation;
 
             public Mediator()
             {
                 _rnd = new Random();
-                _events = new ConcurrentQueue<int>();
+                _unprocessedEvents = new ConcurrentQueue<int>();
                 CalculatedData = new List<Result>();
             }
 
             public List<Result> CalculatedData { get; }
 
-            public ConcurrentQueue<int> Events => _events;
+            public ConcurrentQueue<int> UnprocessedEvents => _unprocessedEvents;
 
             public void Stop()
             {
@@ -89,9 +91,9 @@ namespace ProducerConsumer
             {
                 Console.WriteLine($"Mediator handle: {@event}: {DateTime.Now:MM/dd/yyyy hh:mm:ss.fff}");
 
-                _events.Enqueue(@event);
+                _unprocessedEvents.Enqueue(@event);
 
-                _runningCalculation = Task.Run(() => SlowBatchProcessingAsync(_events));
+                _runningCalculation = Task.Run(() => SlowBatchProcessingAsync(_unprocessedEvents));
             }
 
             private Task SlowBatchProcessingAsync(ConcurrentQueue<int> events)
