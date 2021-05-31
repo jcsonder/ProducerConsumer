@@ -12,8 +12,6 @@
         private readonly ConcurrentQueue<int> _unprocessedEvents;
         private readonly CancellationTokenSource _cancellationTokenSource;
 
-        private Task _runningCalculation;
-
         public EventProcessor()
         {
             _rnd = new Random();
@@ -32,15 +30,6 @@
         public void Stop()
         {
             _cancellationTokenSource.Cancel();
-
-            if (_runningCalculation != null && !_runningCalculation.IsCompleted)
-            {
-                Console.WriteLine("Running Task exists");
-            }
-            else
-            {
-                Console.WriteLine("No running Task exists");
-            }
         }
 
         public void Handle(int @event)
@@ -49,7 +38,8 @@
 
             _unprocessedEvents.Enqueue(@event);
 
-            _runningCalculation = Task.Run(SlowBatchProcessingAsync, _cancellationTokenSource.Token);
+            // fire & forget
+            Task.Run(SlowBatchProcessingAsync, _cancellationTokenSource.Token);
         }
 
         private Task SlowBatchProcessingAsync()

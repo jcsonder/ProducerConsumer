@@ -43,9 +43,7 @@
 
             mediator.Stop();
 
-            Console.WriteLine($"mediator.CalculatedData.Count={mediator.CalculatedData.Count}");
-            mediator.CalculatedData.ForEach(Console.WriteLine);
-
+            Console.WriteLine($"mediator.CalculatedData.Count={mediator.CalculatedData.Count}, Items:{string.Join(", ", mediator.CalculatedData)}");
             Console.WriteLine($"mediator.UnprocessedEvents.Count={mediator.UnprocessedEvents.Count}, Items:{string.Join(", ", mediator.UnprocessedEvents)}");
 
             Console.WriteLine("End of Main - Press any key to finish");
