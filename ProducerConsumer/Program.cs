@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,9 +8,9 @@ namespace ProducerConsumer
 {
     class Program
     {
-        static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
 
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             Mediator mediator = new Mediator();
             var producerTask = Task.Run(() => {
@@ -30,9 +29,7 @@ namespace ProducerConsumer
                         {
                             case ConsoleKey.X:
                                 breakLoop = true;
-                                cancellationTokenSource.Cancel();
-                                break;
-                            default:
+                                CancellationTokenSource.Cancel();
                                 break;
                         }
 
@@ -42,14 +39,14 @@ namespace ProducerConsumer
                         }
                     }
                 }
-            }, cancellationTokenSource.Token);
+            }, CancellationTokenSource.Token);
 
             await producerTask;
 
             mediator.Stop();
 
             Console.WriteLine($"mediator.CalculatedData.Count={mediator.CalculatedData.Count}");
-            mediator.CalculatedData.ForEach(x => Console.WriteLine(x));
+            mediator.CalculatedData.ForEach(Console.WriteLine);
 
             Console.WriteLine("End of Main - Press any key to finish");
             Console.ReadLine();
@@ -61,9 +58,6 @@ namespace ProducerConsumer
             private readonly BlockingCollection<int> _events;
             private Task _runningCalculation;
 
-            // TODO: Order is not guaranteed!
-            private List<Result> _calculatedData;
-
             public Mediator()
             {
                 _rnd = new Random();
@@ -71,28 +65,28 @@ namespace ProducerConsumer
                 CalculatedData = new List<Result>();
             }
 
-            public List<Result> CalculatedData { get => _calculatedData; private set => _calculatedData = value; }
+            public List<Result> CalculatedData { get; }
 
             public void Stop()
             {
                 //_events.CompleteAdding();
-                cancellationTokenSource.Cancel();
+                CancellationTokenSource.Cancel();
 
                 if (_runningCalculation != null && !_runningCalculation.IsCompleted)
                 {
-                    Console.WriteLine($"Running Task exists");
+                    Console.WriteLine("Running Task exists");
                 }
                 else
                 {
-                    Console.WriteLine($"No running Task exists");
+                    Console.WriteLine("No running Task exists");
                 }
 
-                // TODO: Do we have access to all events that we received? Or jsut to the ones we have a result calculted for?
+                // TODO: Do we have access to all events that we received? Or just to the ones we have a result calculated for?
             }
 
             public void Handle(int @event)
             {
-                Console.WriteLine($"Mediator handle: {@event}: {DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss.fff")}");
+                Console.WriteLine($"Mediator handle: {@event}: {DateTime.Now:MM/dd/yyyy hh:mm:ss.fff}");
 
                 _events.Add(@event);
 
@@ -105,11 +99,11 @@ namespace ProducerConsumer
                 int waitTimeInMs = _rnd.Next(200, 1000);
                 try
                 {
-                    Task.Delay(waitTimeInMs, cancellationTokenSource.Token).Wait(cancellationTokenSource.Token);
+                    Task.Delay(waitTimeInMs, CancellationTokenSource.Token).Wait(CancellationTokenSource.Token);
                 }
                 catch (OperationCanceledException)
                 {
-                    return Task.FromCanceled(cancellationTokenSource.Token);
+                    return Task.FromCanceled(CancellationTokenSource.Token);
                 }
 
                 while (events.Count > 0)
@@ -117,15 +111,15 @@ namespace ProducerConsumer
                     int @event;
                     try
                     {
-                        @event = events.Take(cancellationTokenSource.Token);
+                        @event = events.Take(CancellationTokenSource.Token);
                     }
                     catch (OperationCanceledException)
                     {
-                        Console.WriteLine("Take operation was canceled. IsCancellationRequested={0}", cancellationTokenSource.IsCancellationRequested);
-                        return Task.FromCanceled(cancellationTokenSource.Token);
+                        Console.WriteLine("Take operation was canceled. IsCancellationRequested={0}", CancellationTokenSource.IsCancellationRequested);
+                        return Task.FromCanceled(CancellationTokenSource.Token);
                     }
 
-                    if (cancellationTokenSource.IsCancellationRequested)
+                    if (CancellationTokenSource.IsCancellationRequested)
                     {
                         break;
                     }
@@ -140,18 +134,18 @@ namespace ProducerConsumer
 
             public class Result
             {
-                public Result(int raw, double calculted)
+                public Result(int raw, double calculated)
                 {
                     RawValue = raw;
-                    CalcultedValue = calculted;
+                    CalculatedValue = calculated;
                 }
 
                 public int RawValue { get; }
-                public double CalcultedValue { get; }
+                public double CalculatedValue { get; }
 
                 public override string ToString()
                 {
-                    return $"Raw={RawValue}, CalculatedValeu={CalcultedValue}";
+                    return $"Raw={RawValue}, CalculatedValue={CalculatedValue}";
                 }
             }
         }
