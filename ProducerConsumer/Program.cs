@@ -48,6 +48,8 @@ namespace ProducerConsumer
             Console.WriteLine($"mediator.CalculatedData.Count={mediator.CalculatedData.Count}");
             mediator.CalculatedData.ForEach(Console.WriteLine);
 
+            Console.WriteLine($"mediator: Not processed event count={mediator.Events.Count}, Items:{string.Join(", ", mediator.Events)}");
+
             Console.WriteLine("End of Main - Press any key to finish");
             Console.ReadLine();
         }
@@ -55,21 +57,22 @@ namespace ProducerConsumer
         private class Mediator
         {
             private readonly Random _rnd;
-            private readonly BlockingCollection<int> _events;
+            private readonly ConcurrentQueue<int> _events;
             private Task _runningCalculation;
 
             public Mediator()
             {
                 _rnd = new Random();
-                _events = new BlockingCollection<int>(new ConcurrentQueue<int>());
+                _events = new ConcurrentQueue<int>();
                 CalculatedData = new List<Result>();
             }
 
             public List<Result> CalculatedData { get; }
 
+            public ConcurrentQueue<int> Events => _events;
+
             public void Stop()
             {
-                //_events.CompleteAdding();
                 CancellationTokenSource.Cancel();
 
                 if (_runningCalculation != null && !_runningCalculation.IsCompleted)
@@ -80,20 +83,18 @@ namespace ProducerConsumer
                 {
                     Console.WriteLine("No running Task exists");
                 }
-
-                // TODO: Do we have access to all events that we received? Or just to the ones we have a result calculated for?
             }
 
             public void Handle(int @event)
             {
                 Console.WriteLine($"Mediator handle: {@event}: {DateTime.Now:MM/dd/yyyy hh:mm:ss.fff}");
 
-                _events.Add(@event);
+                _events.Enqueue(@event);
 
                 _runningCalculation = Task.Run(() => SlowBatchProcessingAsync(_events));
             }
 
-            private Task SlowBatchProcessingAsync(BlockingCollection<int> events)
+            private Task SlowBatchProcessingAsync(ConcurrentQueue<int> events)
             {
                 // processing takes at least 200ms: Producer creates the events faster then we can process them!
                 int waitTimeInMs = _rnd.Next(200, 1000);
@@ -108,25 +109,11 @@ namespace ProducerConsumer
 
                 while (events.Count > 0)
                 {
-                    int @event;
-                    try
+                    if (events.TryDequeue(out var @event))
                     {
-                        @event = events.Take(CancellationTokenSource.Token);
+                        Console.WriteLine($"                   : {@event}");
+                        CalculatedData.Add(new Result(@event, @event + 0.1));
                     }
-                    catch (OperationCanceledException)
-                    {
-                        Console.WriteLine("Take operation was canceled. IsCancellationRequested={0}", CancellationTokenSource.IsCancellationRequested);
-                        return Task.FromCanceled(CancellationTokenSource.Token);
-                    }
-
-                    if (CancellationTokenSource.IsCancellationRequested)
-                    {
-                        break;
-                    }
-
-                    // TODO: Order is not correct (anymore?): But that's a mus!
-                    Console.WriteLine($"                   : {@event}");
-                    CalculatedData.Add(new Result(@event, @event + 0.1));
                 }
 
                 return Task.CompletedTask;
